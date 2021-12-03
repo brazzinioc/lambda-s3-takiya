@@ -5,9 +5,19 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParametersGroups:
       - Label:
+          default: "Topic name "
+        Parameters: 
+          - topicName
+
+      - Label:
           default: "S3 Bucket for Artifacts"
         Parameters:
           - s3BucketArtifactsName
+
+      - Label:
+          default: "ECR Repository to save Lambda Image"
+        Parameters:
+          - ecrRepositoryName
 
       - Label:
           default: "IAM role for CodeBuild"
@@ -29,9 +39,15 @@ Metadata:
           - lambdaS3PolicyName
 
     ParametersLabels:
+      topicName:
+        default: "Ingresa el nombre del Topic para Notificaciones"
+
       s3BucketArtifactsName:
         default: "Ingresa el nombre que desea asignar al Bucket de Artefactos"
 
+      ecrRepositoryName:
+        default: "Ingresa el nombre que desea asignar al Repositorio ECR"
+    
       codeBuildRoleName:
         default: "Ingresa el nombre que desea asignar al Rol de CodeBuild"
 
@@ -53,44 +69,62 @@ Metadata:
       lambdaS3PolicyName:
         default: "Ingresa el nombre que desea asignar al Policy de S3 de Lambda"
 
-Parameters:
+Parameters: 
+  topicName:
+    Type: String
+    Description: Nombre del Topic para Notificaciones
+    Default: "takiyacodebuildtopic"
+
   s3BucketArtifactsName:
     Description: "Nombre de Bucket para Artefactos"
     Type: String
+    Default: "takiyas3artifacts"
 
+  ecrRepositoryName:
+    Description: "Nombre de Repositorio ECR"
+    Type: String
+    Default: "takiyaecrrepository"
+    
   codeBuildRoleName:
     Description: "Nombre de Rol para CodeBuild"
     Type: String
-  
+    Default: "takiyacodebuildrole"
+
   codeBuildPolicyName:
     Description: "Nombre de Policy para CodeBuild"
     Type: String
+    Default: "takiyacodebuildpolicy"
 
   codePipelineRoleName:
     Description: "Nombre de Rol para CodePipeline"
     Type: String
+    Default: "takiyacodepipelinerole"
 
   codePipelinePolicyName:
     Description: "Nombre de Policy para CodePipeline"
     Type: String
+    Default: "takiyacodepipelinepolicy"
 
   lambdaRoleName:
     Description: "Nombre de Rol para Lambda"
     Type: String
+    Default: "takiyalambdarole"
 
   lambdaCloudwatchPolicyName:
     Description: "Nombre de Policy para CloudWatch de Lambda"
     Type: String
+    Default: "takiyalambdacloudwatchpolicy"
 
   lambdaS3PolicyName:
     Description: "Nombre de Policy para S3 de Lambda"
     Type: String
+    Default: "takiyalambdas3policy"
 
 Resources:
   SNSapprovalprd:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: approval-prd
+      TopicName: !Ref topicName
 
   KMSKey:
     Type: "AWS::KMS::Key"
@@ -133,6 +167,11 @@ Resources:
     Properties:
       BucketName: !Ref s3BucketArtifactsName
 
+  ECRRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref ecrRepositoryName
+
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -154,6 +193,13 @@ Resources:
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
                   - ec2:CreateNetworkInterface
                   - ec2:DescribeDhcpOptions
                   - ec2:DescribeNetworkInterfaces
@@ -328,38 +374,42 @@ Resources:
               - "*"
 
 Outputs:
-
   PipelineCMKey:
     Value: !GetAtt KMSKey.Arn
     Export:
-      Name: PipelineCMKey
+      Name: PipelineCMKeyTakiya
 
   PipelineRole:
     Value: !GetAtt CodePipelineRole.Arn
     Export:
-      Name: PipelineRole
+      Name: PipelineRoleTakiya
 
   CodeBuildRole:
     Value: !GetAtt CodeBuildRole.Arn
     Export:
-      Name: CodeBuildRole
+      Name: CodeBuildRoleTakiya
 
   S3ArtifactsBucket:
     Value: !Ref S3ArtifactsBucket
     Export:
-      Name: S3ArtifactsBucket
+      Name: S3ArtifactsBucketTakiya
+
+  ECRRepository:
+    Value: !Ref ECRRepository
+    Export:
+      Name: ECRRepositoryTakiya
 
   SNSapprovalprd:
     Value: !Ref SNSapprovalprd
     Export:
-      Name: SNSapprovalprd
+      Name: SNSapprovalprdTakiya
 
   LambdaPolicyCloudWatch:
     Value: !Ref LambdaPolicyCloudWatch
     Export:
-      Name: LambdaPolicyCloudWatch
+      Name: LambdaPolicyCloudWatchTakiya
 
   LambdaPolicyS3:
     Value: !Ref LambdaPolicyS3
     Export:
-      Name: LambdaPolicyS3
+      Name: LambdaPolicyS3Takiya
