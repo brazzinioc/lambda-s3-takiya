@@ -95,7 +95,7 @@ Parameters:
   ecrRepositoryName:
     Type: String
     Description: "Nombre de Repositorio ECR"
-    Default: "takiyalambdaimgsecr"
+    Default: "takiyalambdaimgs"
 
   codeBuildRoleName:
     Type: String
