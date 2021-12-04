@@ -216,9 +216,6 @@ Resources:
                   - ecr:InitiateLayerUpload
                   - ecr:PutImage
                   - ecr:UploadLayerPart
-                Resource: !GetAtt ECRRepository.Arn
-              - Effect: Allow
-                Action:
                   - ec2:CreateNetworkInterface
                   - ec2:DescribeDhcpOptions
                   - ec2:DescribeNetworkInterfaces
