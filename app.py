@@ -6,6 +6,7 @@ from urllib.parse import unquote_plus
 from PIL import Image
 import PIL.Image
 
+BUCKET_DESTINATION = os.environ['BUCKET_DESTINATION']
 
 s3_client = boto3.client('s3')
 
@@ -19,7 +20,7 @@ def lambda_handler(event, context):
     for record in event['Records']:
 
         bucket = record['s3']['bucket']['name'] # nombre del bucket origen
-        bucket_dest = 'takiya' # nombre del bucket final
+        #bucket_dest = 'takiya' # nombre del bucket final
         key = unquote_plus(record['s3']['object']['key'])  # nombre del archivo y su extensión
 
         unique_code = str( uuid.uuid4() )
@@ -33,7 +34,7 @@ def lambda_handler(event, context):
         try:
             s3_client.download_file(bucket, key, download_path)
             convert_image(download_path, convert_path)
-            s3_client.upload_file(convert_path, bucket_dest, orig_path + final_extension)
+            s3_client.upload_file(convert_path, BUCKET_DESTINATION, orig_path + final_extension)
             s3_client.delete_object(Bucket=bucket, Key=key)
             print("Successfully. File converted : {} to {}".format(key, orig_path + final_extension))
         except Exception as e:

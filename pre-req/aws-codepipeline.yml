@@ -5,9 +5,20 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParametersGroups:
       - Label:
-          default: "S3 Bucket for Artifacts"
+          default: "Topic name"
         Parameters:
-          - s3BucketArtifactsName
+          - topicName
+
+      - Label:
+          default: "Buckets S3"
+        Parameters:
+          - bucketImgSourceName
+          - bucketImgDestinationName
+
+      - Label:
+          default: "ECR Repository to save Lambda Image"
+        Parameters:
+          - ecrRepositoryName
 
       - Label:
           default: "IAM role for CodeBuild"
@@ -28,9 +39,21 @@ Metadata:
           - lambdaCloudwatchPolicyName
           - lambdaS3PolicyName
 
-    ParametersLabels:
+    ParameterLabels:
+      topicName:
+        default: "Ingresa el nombre del Topic para Notificaciones"
+
+      bucketImgSourceName:
+        default: "Ingresa el nombre del Bucket Origen de Imágenes"
+
+      bucketImgDestinationName:
+        default: "Ingresa el nombre del Bucket Destino de Imágenes"
+
       s3BucketArtifactsName:
         default: "Ingresa el nombre que desea asignar al Bucket de Artefactos"
+
+      ecrRepositoryName:
+        default: "Ingresa el nombre que desea asignar al Repositorio ECR"
 
       codeBuildRoleName:
         default: "Ingresa el nombre que desea asignar al Rol de CodeBuild"
@@ -54,43 +77,67 @@ Metadata:
         default: "Ingresa el nombre que desea asignar al Policy de S3 de Lambda"
 
 Parameters:
-  s3BucketArtifactsName:
-    Description: "Nombre de Bucket para Artefactos"
+  topicName:
+    Description: "Nombre del Topic para Notificaciones"
     Type: String
+    Default: "takiyacodebuildtopic"
+
+  bucketImgSourceName:
+    Description: "Nombre del Bucket Origen de Imágenes"
+    Type: String
+    Default: "takiyabuckimgsource"
+
+  bucketImgDestinationName:
+    Description: "Nombre del Bucket Destino de Imágenes"
+    Type: String
+    Default: "takiyabuckimgdestin"
+
+  ecrRepositoryName:
+    Type: String
+    Description: "Nombre de Repositorio ECR"
+    Default: "takiyalambdaimgsecr"
 
   codeBuildRoleName:
+    Type: String
     Description: "Nombre de Rol para CodeBuild"
-    Type: String
-  
+    Default: "takiyacodebuildrole"
+
   codeBuildPolicyName:
-    Description: "Nombre de Policy para CodeBuild"
     Type: String
+    Description: "Nombre de Policy para CodeBuild"
+    Default: "takiyacodebuildpolicy"
 
   codePipelineRoleName:
-    Description: "Nombre de Rol para CodePipeline"
     Type: String
+    Description: "Nombre de Rol para CodePipeline"
+    Default: "takiyacodepipelinerole"
 
   codePipelinePolicyName:
-    Description: "Nombre de Policy para CodePipeline"
     Type: String
+    Description: "Nombre de Policy para CodePipeline"
+    Default: "takiyacodepipelinepolicy"
 
   lambdaRoleName:
-    Description: "Nombre de Rol para Lambda"
     Type: String
+    Description: "Nombre de Rol para Lambda"
+    Default: "takiyalambdarole"
 
   lambdaCloudwatchPolicyName:
-    Description: "Nombre de Policy para CloudWatch de Lambda"
     Type: String
+    Description: "Nombre de Policy para CloudWatch de Lambda"
+    Default: "takiyalambcwpolicy"
 
   lambdaS3PolicyName:
-    Description: "Nombre de Policy para S3 de Lambda"
     Type: String
+    Description: "Nombre de Policy para S3 de Lambda"
+    Default: "takiyalambdas3policy"
 
 Resources:
   SNSapprovalprd:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: approval-prd
+      TopicName: !Ref topicName
+
 
   KMSKey:
     Type: "AWS::KMS::Key"
@@ -128,10 +175,20 @@ Resources:
               - "kms:CancelKeyDeletion"
             Resource: "*"
 
-  S3ArtifactsBucket:
+  S3BucketImgSource:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref s3BucketArtifactsName
+      BucketName: !Ref bucketImgSourceName
+
+  S3BucketImgDestination:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref bucketImgDestinationName
+
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ecrRepositoryName
 
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -153,7 +210,15 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
                   - ecr:GetAuthorizationToken
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt ECRRepository.Arn
+              - Effect: Allow
+                Action:
                   - ec2:CreateNetworkInterface
                   - ec2:DescribeDhcpOptions
                   - ec2:DescribeNetworkInterfaces
@@ -209,17 +274,6 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:GetBucketVersioning
-                Resource:
-                  - !Join
-                    - ""
-                    - - !GetAtt S3ArtifactsBucket.Arn # made => arn:aws:s3:::bucket-name/*
-                      - "/*"
-              - Effect: Allow
-                Action:
                   - codebuild:BatchGetBuilds
                   - codebuild:BatchGetProjects
                   - codebuild:ListBuilds
@@ -251,29 +305,6 @@ Resources:
                 Resource:
                   - !GetAtt KMSKey.Arn
       RoleName: !Ref codePipelineRoleName
-
-  S3ArtifactsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref s3BucketArtifactsName
-      PolicyDocument:
-        Version: "2012-10-17"
-        Id: SSEAndSSLPolicy
-        Statement:
-          - Sid: ""
-            Effect: Allow
-            Principal:
-              AWS:
-                - !GetAtt CodeBuildRole.Arn
-                - !GetAtt CodePipelineRole.Arn
-            Action:
-              - s3:Get*
-              - s3:Put*
-            Resource:
-              - !Join
-                - ""
-                - - !GetAtt S3ArtifactsBucket.Arn # made => arn:aws:s3:::bucket-name/*
-                  - "/*"
 
   LambdaPolicyCloudWatch:
     Type: AWS::IAM::ManagedPolicy
@@ -307,6 +338,65 @@ Resources:
       Path: /
       RoleName: !Ref lambdaRoleName
 
+  # Políticas para el Bucket Origen de Imagenes
+  S3BucketImgSourcePolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketImgSource
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: SSEAndSSLPolicy
+        Statement:
+          # Permite la lectura de archivos al role Lambda
+          - Sid: "Allow read access to Lambda"
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt LambdaRole.Arn
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Join
+                - ""
+                - - !GetAtt S3BucketImgSource.Arn
+                  - "/*"
+          # Permite la escritura de archivos al usuario usado en el código.
+          - Sid: "Allow write access to IAM code user"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:user/takiya-s3"
+            Action:
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Join
+                - ""
+                - - !GetAtt S3BucketImgSource.Arn
+                  - "/*"
+
+  # Políticas para el Bucket Destino de Imagenes
+  S3BucketImgDestinationPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketImgDestination
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: SSEAndSSLPolicy
+        Statement:
+          # Permite la escritura de archivos al role Lambda
+          - Sid: "Allow write access to Lambda"
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt LambdaRole.Arn
+            Action:
+              - s3:PutObject
+            Resource:
+              - !Join
+                - ""
+                - - !GetAtt S3BucketImgDestination.Arn
+                  - "/*"
+
   LambdaPolicyS3:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -316,50 +406,66 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - s3:ListAllMyBuckets
-              - s3:HeadBucket
-              - s3:ListObjects
+              - s3:ListAllMyBuckets # permite listar todos los buckets
+              - s3:HeadBucket # determina si tienes acceso al bucket
+              - s3:ListObjects # permite listar los objetos de un bucket
             Resource:
               - "*"
           - Effect: Allow
             Action:
               - s3:*
             Resource:
-              - "*"
+              - !Join
+                - ""
+                - - !GetAtt S3BucketImgSource.Arn
+                  - "/*"
+              - !Join
+                - ""
+                - - !GetAtt S3BucketImgDestination.Arn
+                  - "/*"
 
 Outputs:
-
   PipelineCMKey:
     Value: !GetAtt KMSKey.Arn
     Export:
-      Name: PipelineCMKey
+      Name: PipelineCMKeyTakiya
 
   PipelineRole:
     Value: !GetAtt CodePipelineRole.Arn
     Export:
-      Name: PipelineRole
+      Name: PipelineRoleTakiya
 
   CodeBuildRole:
     Value: !GetAtt CodeBuildRole.Arn
     Export:
-      Name: CodeBuildRole
+      Name: CodeBuildRoleTakiya
 
-  S3ArtifactsBucket:
-    Value: !Ref S3ArtifactsBucket
+  S3BucketImgSource:
+    Value: !Ref S3BucketImgSource
     Export:
-      Name: S3ArtifactsBucket
+      Name: S3BucketImgSourceTakiya
+
+  S3BucketImgDestination:
+    Value: !Ref S3BucketImgDestination
+    Export:
+      Name: S3BucketImgDestinationTakiya
+
+  ECRRepository:
+    Value: !Ref ECRRepository
+    Export:
+      Name: ECRRepositoryTakiya
 
   SNSapprovalprd:
     Value: !Ref SNSapprovalprd
     Export:
-      Name: SNSapprovalprd
+      Name: SNSapprovalprdTakiya
 
   LambdaPolicyCloudWatch:
     Value: !Ref LambdaPolicyCloudWatch
     Export:
-      Name: LambdaPolicyCloudWatch
+      Name: LambdaPolicyCloudWatchTakiya
 
   LambdaPolicyS3:
     Value: !Ref LambdaPolicyS3
     Export:
-      Name: LambdaPolicyS3
+      Name: LambdaPolicyS3Takiya
