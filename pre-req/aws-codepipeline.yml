@@ -416,8 +416,7 @@ Resources:
             Action:
               - s3:Get*
               - s3:Put*
-          Resource: !Sub "arn:aws:s3:::${S3ArtifactsBucket}/*"
-
+            Resource: !Sub "arn:aws:s3:::${S3ArtifactsBucket}/*"
 
   LambdaPolicyS3:
     Type: AWS::IAM::ManagedPolicy
