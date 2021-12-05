@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation Sample Template for Lambda S3 of Takiya Project'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Parameters:
+  LambdaName:
+    Description: 'Lambda Function Name'
+    Type: String
+    Default: 'lambda-imgs-s3-takiya'
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - !ImportValue LambdaPolicyCloudWatchTakiya
+        - !ImportValue LambdaPolicyS3Takiya
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: !ImportValue ECRRepositoryURITakiya
+      ImageConfig:
+        Command:
+          - "app.lambda_handler"
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          BUCKET_DESTINATION: !ImportValue S3BucketImgDestinationTakiya
