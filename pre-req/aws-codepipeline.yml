@@ -451,6 +451,11 @@ Outputs:
     Value: !Ref ECRRepository
     Export:
       Name: ECRRepositoryTakiya
+  
+  ECRRepositoryURI:
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Export:
+      Name: ECRRepositoryURITakiya
 
   SNSapprovalprd:
     Value: !Ref SNSapprovalprd
