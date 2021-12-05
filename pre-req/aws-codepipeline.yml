@@ -400,23 +400,23 @@ Resources:
                   - "/*"
 
   S3ArtifactsBucketPolicy:
-      Type: AWS::S3::BucketPolicy
-      Properties:
-        Bucket: !Ref S3ArtifactsBucket
-        PolicyDocument:
-          Version: "2012-10-17"
-          Id: SSEAndSSLPolicy
-          Statement:
-            - Sid: ""
-              Effect: Allow
-              Principal:
-                AWS:
-                  - !GetAtt CodeBuildRole.Arn
-                  - !GetAtt CodePipelineRole.Arn
-              Action:
-                - s3:Get*
-                - s3:Put*
-            Resource: !Sub "arn:aws:s3:::${S3ArtifactsBucket}/*"
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3ArtifactsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: SSEAndSSLPolicy
+        Statement:
+          - Sid: ""
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt CodeBuildRole.Arn
+                - !GetAtt CodePipelineRole.Arn
+            Action:
+              - s3:Get*
+              - s3:Put*
+          Resource: !Sub "arn:aws:s3:::${S3ArtifactsBucket}/*"
 
 
   LambdaPolicyS3:
