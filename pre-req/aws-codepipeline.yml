@@ -185,6 +185,11 @@ Resources:
     Properties:
       BucketName: !Ref bucketImgDestinationName
 
+  S3ArtifactsBucket: # can be add a condition for creation
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub codepipeline-takiya-artifacts-bucket-${AWS::AccountId}-${AWS::Region}
+
   ECRRepository:
     Type: AWS::ECR::Repository
     Properties:
@@ -394,6 +399,26 @@ Resources:
                 - - !GetAtt S3BucketImgDestination.Arn
                   - "/*"
 
+  S3ArtifactsBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref S3ArtifactsBucket
+        PolicyDocument:
+          Version: "2012-10-17"
+          Id: SSEAndSSLPolicy
+          Statement:
+            - Sid: ""
+              Effect: Allow
+              Principal:
+                AWS:
+                  - !GetAtt CodeBuildRole.Arn
+                  - !GetAtt CodePipelineRole.Arn
+              Action:
+                - s3:Get*
+                - s3:Put*
+            Resource: !Sub "arn:aws:s3:::${S3ArtifactsBucket}/*"
+
+
   LambdaPolicyS3:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -446,6 +471,11 @@ Outputs:
     Value: !Ref S3BucketImgDestination
     Export:
       Name: S3BucketImgDestinationTakiya
+
+  S3ArtifactsBucket:
+    Value: !Ref S3ArtifactsBucket
+    Export:
+      Name: S3TakiyaArtifactsBucket
 
   ECRRepository:
     Value: !Ref ECRRepository
