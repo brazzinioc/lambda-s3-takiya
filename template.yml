@@ -9,21 +9,6 @@ Parameters:
     Default: 'lambda-imgs-s3-takiya'
 
 Resources:
-  LambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - !ImportValue LambdaPolicyCloudWatchTakiya
-        - !ImportValue LambdaPolicyS3Takiya
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Path: /
-
   LambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -38,3 +23,19 @@ Resources:
       Environment:
         Variables:
           BUCKET_DESTINATION: !ImportValue S3BucketImgDestinationTakiya
+
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - !ImportValue LambdaPolicyCloudWatchTakiya
+        - !ImportValue LambdaPolicyS3Takiya
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
